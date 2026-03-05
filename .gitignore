@@ -1,0 +1,24 @@
+# Credenciales y secretos — NUNCA subir al repo
+.env
+credenciales.json
+
+# Salida generada
+salida/
+
+# Datos locales del operador
+data/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env/
+venv/
+dist/
+build/
+*.egg-info/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+.env 
