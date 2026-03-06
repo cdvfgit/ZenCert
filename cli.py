@@ -56,8 +56,8 @@ def _limpiar():
 
 def _encabezado():
     console.print(Panel(
-        Text("SISTEMA DE CERTIFICADOS DE ARTES MARCIALES", justify="center", style=_CYAN),
-        subtitle="[dim]Kokusai Shito Ryu OCOA[/dim]",
+        Text("SISTEMA DE CERTIFICADOS DE KARATE DO", justify="center", style=_CYAN),
+        subtitle="[dim]Sanchin Cretificate System[/dim]",
         box=box.DOUBLE_EDGE,
         border_style="cyan",
         padding=(0, 2),

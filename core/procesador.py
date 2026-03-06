@@ -242,7 +242,7 @@ def formatear_registro(numero: int) -> str:
             f"El número de registro debe ser mayor a cero. Recibido: {numero}"
         )
 
-    return f"Registro N°: {numero:04d}"
+    return f"{numero:04d}"
 
 
 def formatear_grado_espanol(
