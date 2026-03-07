@@ -50,6 +50,25 @@ _DIM     = "dim"
 
 # ── Helpers de visualización ──────────────────────────────────────────────────
 
+def _abrir_archivo(ruta: str):
+    """
+    Abre un archivo con la aplicación predeterminada del sistema operativo.
+    Compatible con Windows, macOS y Linux.
+
+    Args:
+        ruta: Ruta absoluta del archivo a abrir.
+    """
+    import subprocess
+    try:
+        if sys.platform == "win32":
+            os.startfile(ruta)
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", ruta])
+        else:
+            subprocess.Popen(["xdg-open", ruta])
+    except Exception as e:
+        _warn(f"No se pudo abrir automáticamente: {Path(ruta).name} — {e}")
+
 def _limpiar():
     os.system("cls" if os.name == "nt" else "clear")
 
@@ -263,15 +282,20 @@ def _procesar_orden(orden: dict, numero: int, total: int) -> dict:
         Prompt.ask("  Presiona Enter para continuar con la siguiente orden")
         return resultado
 
-    # ── 6. Intervención manual del operador ───────────────────────────────
+    # ── 6. Abrir archivos automáticamente para revisión ──────────────────
     console.print()
     _separador()
     console.print(
-        "\n  [bold yellow]Revisa los archivos generados antes de confirmar.[/bold yellow]\n"
+        "\n  [bold yellow]Abriendo archivos para revisión...[/bold yellow]\n"
     )
 
     for ruta in rutas_generadas:
+        _abrir_archivo(ruta)
         console.print(f"  [dim]📄 {ruta}[/dim]")
+
+
+    # ── 7. Intervención manual del operador ───────────────────────────────
+    
 
     console.print()
     console.print("  [bold]¿Qué deseas hacer?[/bold]")
