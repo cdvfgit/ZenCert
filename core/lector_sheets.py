@@ -44,10 +44,11 @@ _COL = {
     "organizacion":      3,
     "dojo":              4,
     "ciudad":            5,
-    "estado":            6,
-    "total_alumnos":     7,
-    "registro_inicio":   8,
-    "registro_fin":      9,
+    "fecha":             6,
+    "estado":            7,
+    "total_alumnos":     8,
+    "registro_inicio":   9,
+    "registro_fin":      10,
 }
 
 # Columnas de las hojas por orden (estructura universal)
@@ -115,6 +116,7 @@ def _fila_a_orden(fila: list) -> dict:
         "organizacion":    get("organizacion"),
         "dojo":            get("dojo"),
         "ciudad":          get("ciudad"),
+        "fecha":           get("fecha"),
         "estado":          get("estado"),
         "total_alumnos":   get("total_alumnos"),
         "registro_inicio": get("registro_inicio"),
@@ -305,7 +307,8 @@ def crear_orden(datos_orden: dict) -> str:
             - instructor (str)
             - organizacion (str)
             - dojo (str)
-            - tipo (str): 'dan' o 'kyu'
+            - ciudad (str)
+            - fecha (str)
             - total_alumnos (int)
 
     Returns:
@@ -341,6 +344,8 @@ def crear_orden(datos_orden: dict) -> str:
     nueva_fila[_COL["instructor"]]      = datos_orden["instructor"]
     nueva_fila[_COL["organizacion"]]    = datos_orden["organizacion"]
     nueva_fila[_COL["dojo"]]            = datos_orden["dojo"]
+    nueva_fila[_COL["ciudad"]]          = datos_orden["ciudad"]
+    nueva_fila[_COL["fecha"]]           = datos_orden["fecha"]
     nueva_fila[_COL["estado"]]          = Estado.PENDIENTE
     nueva_fila[_COL["total_alumnos"]]   = str(datos_orden["total_alumnos"])
     nueva_fila[_COL["registro_inicio"]] = ""
@@ -356,9 +361,10 @@ def crear_orden(datos_orden: dict) -> str:
         datos_orden["total_alumnos"],
     )
     return id_orden
-"""
+
+
 def crear_hoja_orden(id_orden: str, alumnos: list[dict]) -> None:
-    
+    """
     Crea una hoja nueva en el spreadsheet nombrada con el id_orden
     y la llena con los datos de los alumnos del lote.
 
@@ -370,7 +376,9 @@ def crear_hoja_orden(id_orden: str, alumnos: list[dict]) -> None:
         alumnos: Lista de diccionarios con los campos de cada alumno:
             - nombre_alumno (str)
             - cedula (str)
+            - prefijo_cedula (str)
             - grado (str)
+            - tipo (str)
             - notas (str) — puede ser vacío
 
     Raises:
@@ -378,31 +386,32 @@ def crear_hoja_orden(id_orden: str, alumnos: list[dict]) -> None:
         EnvironmentError: Si GOOGLE_SHEET_ID no está en .env.
         ValueError: Si la lista de alumnos está vacía.
         gspread.exceptions.APIError: Si falla la creación de la hoja.
-    
+    """
     if not alumnos:
         raise ValueError(
             f"La lista de alumnos para la orden '{id_orden}' está vacía."
         )
 
     spreadsheet = conectar()
-    hoja = spreadsheet.add_worksheet(title=id_orden, rows=len(alumnos) + 1, cols=4)
+    hoja = spreadsheet.add_worksheet(title=id_orden, rows=len(alumnos) + 1, cols=6)
 
-    encabezados = ["nombre_alumno", "cedula", "grado", "notas"]
+    encabezados = ["nombre_alumno", "cedula", "prefijo_cedula", "grado", "tipo", "notas"]
     filas = [encabezados] + [
         [
             alumno.get("nombre_alumno", ""),
             alumno.get("cedula", ""),
+            alumno.get("prefijo_cedula", ""),
             alumno.get("grado", ""),
+            alumno.get("tipo", ""),
             alumno.get("notas", ""),
         ]
         for alumno in alumnos
     ]
 
-    hoja.update(filas, "A1")
+    hoja.update("A1", filas)
 
     logger.info(
         "crear_hoja_orden | id_orden=%s | total_alumnos=%d",
         id_orden,
         len(alumnos),
     )
-"""

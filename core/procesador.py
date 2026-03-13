@@ -12,7 +12,7 @@ Fuentes de verdad:
 import json
 import logging
 import os
-from datetime import date
+from datetime import datetime, date
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -480,7 +480,20 @@ def procesar_orden(
     organizacion = orden["organizacion"]
     dojo         = orden["dojo"]
     ciudad       = orden["ciudad"]
-    fecha        = orden["fecha"]
+    
+    # Convertir fecha de string a objeto date si es necesario
+    if isinstance(orden["fecha"], str):
+        try:
+            # Intentar formato ISO primero (YYYY-MM-DD) - para nuevas órdenes
+            fecha = datetime.strptime(orden["fecha"], "%Y-%m-%d").date()
+        except ValueError:
+            try:
+                # Intentar formato americano (MM/DD/YYYY) - para órdenes existentes
+                fecha = datetime.strptime(orden["fecha"], "%m/%d/%Y").date()
+            except ValueError:
+                raise ValueError(f"Formato de fecha no reconocido: {orden['fecha']}")
+    else:
+        fecha = orden["fecha"]
 
     # Cargar configuración una sola vez para todo el lote
     config_org  = _cargar_config_org(organizacion)

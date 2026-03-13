@@ -128,7 +128,7 @@ def _tabla_ordenes(ordenes: list[dict]) -> Table:
             o["organizacion"],
             o["dojo"],
             o["total_alumnos"],
-            o["timestamp"][:10],
+            o["fecha"][:10],
         )
     return tabla
 
@@ -139,6 +139,7 @@ def _panel_orden(orden: dict, numero: int, total: int) -> Panel:
         f"[dim]Organización:[/dim] {orden['organizacion'].upper()}\n"
         f"[dim]Dojo        :[/dim] {orden['dojo'].replace('_', ' ').title()}\n"
         f"[dim]Alumnos     :[/dim] {orden['total_alumnos']}\n"
+        f"[dim]Fecha       :[/dim] {orden['fecha']}\n"
         f"[dim]Enviada     :[/dim] {orden['timestamp']}"
     )
     return Panel(
@@ -233,12 +234,8 @@ def _procesar_orden(orden: dict, numero: int, total: int) -> dict:
         # ── 4. Procesar datos ─────────────────────────────────────────────
         _info("Procesando datos...")
         
-        # Convertir timestamp a fecha para procesar_orden
-        fecha_obj = datetime.strptime(orden["timestamp"], "%Y-%m-%d %H:%M").date()
-        
-        # Crear copia de orden con el campo fecha agregado
+        # Usar el campo fecha directamente (procesar_orden() ya maneja la conversión)
         orden_procesable = orden.copy()
-        orden_procesable["fecha"] = fecha_obj
         
         grupos = procesar_orden(
             orden=orden_procesable,
