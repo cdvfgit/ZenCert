@@ -10,8 +10,6 @@ Uso:
 
 import streamlit as st
 
-# ── Configuración de página ───────────────────────────────────────────────────
-
 st.set_page_config(
     page_title="Zen Dojo",
     page_icon="🥋",
@@ -19,325 +17,549 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# ── CSS Global ────────────────────────────────────────────────────────────────
-
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap');
 
-/* ── Reset y base ── */
+:root {
+    --bg:        #080c10;
+    --bg-2:      #0d1117;
+    --bg-3:      #111820;
+    --border:    #1a2535;
+    --border-2:  #243040;
+    --cyan:      #00e5c0;
+    --cyan-dim:  #00b899;
+    --cyan-glow: rgba(0,229,192,0.12);
+    --cyan-soft: rgba(0,229,192,0.06);
+    --red:       #ff4d6a;
+    --amber:     #ffb830;
+    --green:     #00d17a;
+    --text-1:    #f0f4f8;
+    --text-2:    #8899aa;
+    --text-3:    #445566;
+    --radius:    10px;
+    --radius-lg: 16px;
+}
+
 *, *::before, *::after { box-sizing: border-box; }
 
-html, body, [data-testid="stAppViewContainer"] {
-    background-color: #0a0a0f !important;
-    color: #e2e8f0 !important;
-    font-family: 'Inter', sans-serif !important;
+html, body,
+[data-testid="stAppViewContainer"],
+[data-testid="stApp"] {
+    background-color: var(--bg) !important;
+    color: var(--text-1) !important;
+    font-family: 'DM Sans', sans-serif !important;
 }
 
-[data-testid="stAppViewContainer"] {
-    background: radial-gradient(ellipse at 20% 0%, #0d1f2d 0%, #0a0a0f 60%) !important;
+[data-testid="stAppViewContainer"]::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 48px 48px;
+    opacity: 0.15;
+    pointer-events: none;
+    z-index: 0;
 }
 
-/* ── Ocultar elementos de Streamlit ── */
 #MainMenu, footer, header,
 [data-testid="stSidebar"],
-[data-testid="collapsedControl"] { display: none !important; }
+[data-testid="collapsedControl"],
+[data-testid="stDecoration"],
+[data-testid="stStatusWidget"] { display: none !important; }
 
-/* ── Scrollbar ── */
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: #0a0a0f; }
-::-webkit-scrollbar-thumb { background: #00d4aa; border-radius: 2px; }
+[data-testid="stMainBlockContainer"] {
+    padding: 1.5rem 1.25rem !important;
+    max-width: 860px !important;
+    margin: 0 auto !important;
+}
 
-/* ── Tipografía ── */
-h1, h2, h3 { font-family: 'Inter', sans-serif !important; letter-spacing: -0.02em; }
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 3px; }
 
-/* ── Inputs ── */
+h1, h2, h3, h4 {
+    font-family: 'Syne', sans-serif !important;
+    letter-spacing: -0.02em;
+    color: var(--text-1) !important;
+}
+
+/* Inputs */
 [data-testid="stTextInput"] input,
 [data-testid="stNumberInput"] input,
 [data-testid="stTextArea"] textarea {
-    background-color: #111827 !important;
-    border: 1px solid #1e3a4a !important;
-    border-radius: 8px !important;
-    color: #e2e8f0 !important;
-    font-family: 'Inter', sans-serif !important;
-    transition: border-color 0.2s ease !important;
+    background: var(--bg-3) !important;
+    border: 1px solid var(--border-2) !important;
+    border-radius: var(--radius) !important;
+    color: var(--text-1) !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 0.95rem !important;
+    transition: border-color 0.15s, box-shadow 0.15s !important;
 }
 
 [data-testid="stTextInput"] input:focus,
 [data-testid="stNumberInput"] input:focus,
 [data-testid="stTextArea"] textarea:focus {
-    border-color: #00d4aa !important;
-    box-shadow: 0 0 0 2px rgba(0, 212, 170, 0.15) !important;
+    border-color: var(--cyan) !important;
+    box-shadow: 0 0 0 3px var(--cyan-glow) !important;
 }
 
-/* ── Selectbox ── */
-[data-testid="stSelectbox"] > div > div {
-    background-color: #111827 !important;
-    border: 1px solid #1e3a4a !important;
-    border-radius: 8px !important;
-    color: #e2e8f0 !important;
-}
+[data-testid="stTextInput"] input::placeholder,
+[data-testid="stTextArea"] textarea::placeholder { color: var(--text-3) !important; }
 
-/* ── Date input ── */
-[data-testid="stDateInput"] input {
-    background-color: #111827 !important;
-    border: 1px solid #1e3a4a !important;
-    border-radius: 8px !important;
-    color: #e2e8f0 !important;
-}
-
-/* ── Botones primarios ── */
-[data-testid="stButton"] > button[kind="primary"] {
-    background: linear-gradient(135deg, #00d4aa, #00a896) !important;
-    color: #0a0a0f !important;
-    border: none !important;
-    border-radius: 8px !important;
-    font-weight: 600 !important;
-    font-family: 'Inter', sans-serif !important;
-    padding: 0.5rem 1.5rem !important;
-    transition: all 0.2s ease !important;
+[data-testid="stTextInput"] label,
+[data-testid="stNumberInput"] label,
+[data-testid="stTextArea"] label,
+[data-testid="stSelectbox"] label,
+[data-testid="stDateInput"] label {
+    color: var(--text-2) !important;
+    font-size: 0.8rem !important;
+    font-weight: 500 !important;
     letter-spacing: 0.02em !important;
 }
 
-[data-testid="stButton"] > button[kind="primary"]:hover {
-    transform: translateY(-1px) !important;
-    box-shadow: 0 4px 20px rgba(0, 212, 170, 0.35) !important;
+/* Selectbox */
+[data-testid="stSelectbox"] > div > div {
+    background: var(--bg-3) !important;
+    border: 1px solid var(--border-2) !important;
+    border-radius: var(--radius) !important;
+    color: var(--text-1) !important;
+    font-family: 'DM Sans', sans-serif !important;
 }
 
-/* ── Botones secundarios ── */
+/* Date */
+[data-testid="stDateInput"] input {
+    background: var(--bg-3) !important;
+    border: 1px solid var(--border-2) !important;
+    border-radius: var(--radius) !important;
+    color: var(--text-1) !important;
+}
+
+/* Botones primarios */
+[data-testid="stButton"] > button[kind="primary"] {
+    background: var(--cyan) !important;
+    color: #080c10 !important;
+    border: none !important;
+    border-radius: var(--radius) !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-weight: 600 !important;
+    font-size: 0.9rem !important;
+    padding: 0.55rem 1.4rem !important;
+    transition: all 0.15s !important;
+    cursor: pointer !important;
+}
+
+[data-testid="stButton"] > button[kind="primary"]:hover {
+    background: #00ffda !important;
+    box-shadow: 0 0 20px var(--cyan-glow) !important;
+    transform: translateY(-1px) !important;
+}
+
+/* Botones secundarios */
 [data-testid="stButton"] > button[kind="secondary"] {
     background: transparent !important;
-    color: #00d4aa !important;
-    border: 1px solid #00d4aa !important;
-    border-radius: 8px !important;
+    color: var(--text-2) !important;
+    border: 1px solid var(--border-2) !important;
+    border-radius: var(--radius) !important;
+    font-family: 'DM Sans', sans-serif !important;
     font-weight: 500 !important;
-    font-family: 'Inter', sans-serif !important;
-    transition: all 0.2s ease !important;
+    font-size: 0.9rem !important;
+    padding: 0.55rem 1.4rem !important;
+    transition: all 0.15s !important;
 }
 
 [data-testid="stButton"] > button[kind="secondary"]:hover {
-    background: rgba(0, 212, 170, 0.1) !important;
+    border-color: var(--cyan) !important;
+    color: var(--cyan) !important;
+    background: var(--cyan-soft) !important;
 }
 
-/* ── Expander ── */
+/* Expander */
 [data-testid="stExpander"] {
-    background-color: #111827 !important;
-    border: 1px solid #1e3a4a !important;
-    border-radius: 10px !important;
-    margin-bottom: 0.5rem !important;
+    background: var(--bg-2) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-lg) !important;
+    overflow: hidden !important;
+    transition: border-color 0.15s !important;
 }
+
+[data-testid="stExpander"]:hover { border-color: var(--border-2) !important; }
 
 [data-testid="stExpander"] summary {
-    color: #e2e8f0 !important;
+    color: var(--text-1) !important;
     font-weight: 500 !important;
+    font-size: 0.9rem !important;
 }
 
-/* ── Dataframe ── */
-[data-testid="stDataFrame"] {
-    border: 1px solid #1e3a4a !important;
-    border-radius: 10px !important;
-    overflow: hidden !important;
+/* Alertas */
+div.stSuccess > div {
+    background: rgba(0,209,122,0.08) !important;
+    border-left: 3px solid var(--green) !important;
+    border-radius: var(--radius) !important;
+    color: #b3f0d4 !important;
 }
 
-/* ── Alertas ── */
-[data-testid="stSuccess"] {
-    background-color: rgba(0, 212, 170, 0.1) !important;
-    border-left: 3px solid #00d4aa !important;
-    border-radius: 8px !important;
+div.stError > div {
+    background: rgba(255,77,106,0.08) !important;
+    border-left: 3px solid var(--red) !important;
+    border-radius: var(--radius) !important;
+    color: #ffc0c9 !important;
 }
 
-[data-testid="stError"] {
-    background-color: rgba(239, 68, 68, 0.1) !important;
-    border-left: 3px solid #ef4444 !important;
-    border-radius: 8px !important;
+div.stWarning > div {
+    background: rgba(255,184,48,0.08) !important;
+    border-left: 3px solid var(--amber) !important;
+    border-radius: var(--radius) !important;
+    color: #ffe8b0 !important;
 }
 
-[data-testid="stWarning"] {
-    background-color: rgba(245, 158, 11, 0.1) !important;
-    border-left: 3px solid #f59e0b !important;
-    border-radius: 8px !important;
+div.stInfo > div {
+    background: var(--cyan-soft) !important;
+    border-left: 3px solid var(--cyan) !important;
+    border-radius: var(--radius) !important;
+    color: #b0f0e8 !important;
 }
 
-[data-testid="stInfo"] {
-    background-color: rgba(0, 212, 170, 0.07) !important;
-    border-left: 3px solid #00d4aa !important;
-    border-radius: 8px !important;
-}
-
-/* ── Divider ── */
-hr { border-color: #1e3a4a !important; margin: 1.5rem 0 !important; }
-
-/* ── Tabs ── */
+/* Tabs */
 [data-testid="stTabs"] [data-baseweb="tab-list"] {
-    background-color: #111827 !important;
-    border-radius: 10px !important;
+    background: var(--bg-2) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-lg) !important;
     padding: 4px !important;
-    gap: 4px !important;
-    border: 1px solid #1e3a4a !important;
+    gap: 2px !important;
 }
 
 [data-testid="stTabs"] [data-baseweb="tab"] {
-    background-color: transparent !important;
-    color: #64748b !important;
-    border-radius: 7px !important;
+    background: transparent !important;
+    color: var(--text-3) !important;
+    border-radius: var(--radius) !important;
+    font-family: 'DM Sans', sans-serif !important;
     font-weight: 500 !important;
+    font-size: 0.85rem !important;
     border: none !important;
+    padding: 0.45rem 1rem !important;
+    transition: all 0.15s !important;
+}
+
+[data-testid="stTabs"] [data-baseweb="tab"]:hover {
+    color: var(--text-1) !important;
+    background: var(--bg-3) !important;
 }
 
 [data-testid="stTabs"] [aria-selected="true"] {
-    background-color: #00d4aa !important;
-    color: #0a0a0f !important;
+    background: var(--cyan) !important;
+    color: #080c10 !important;
+    font-weight: 600 !important;
 }
 
-/* ── Cards personalizadas ── */
-.card {
-    background: #111827;
-    border: 1px solid #1e3a4a;
-    border-radius: 12px;
-    padding: 1.5rem;
-    margin-bottom: 1rem;
-    transition: border-color 0.2s ease;
+/* Métricas */
+[data-testid="stMetric"] {
+    background: var(--bg-2) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius) !important;
+    padding: 0.85rem 1rem !important;
 }
 
-.card:hover { border-color: #00d4aa; }
-
-.card-header {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #00d4aa;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 0.75rem;
+[data-testid="stMetricLabel"] {
+    font-size: 0.7rem !important;
+    color: var(--text-3) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.06em !important;
+    font-weight: 500 !important;
 }
 
-.card-title {
+[data-testid="stMetricValue"] {
+    font-family: 'Syne', sans-serif !important;
+    font-size: 1rem !important;
+    color: var(--text-1) !important;
+    font-weight: 600 !important;
+}
+
+hr {
+    border: none !important;
+    border-top: 1px solid var(--border) !important;
+    margin: 1.25rem 0 !important;
+}
+
+/* ── Componentes propios ── */
+
+.zd-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 0 1.25rem 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1.75rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.zd-logo {
+    font-family: 'Syne', sans-serif;
     font-size: 1.1rem;
-    font-weight: 600;
-    color: #f1f5f9;
-    margin-bottom: 0.25rem;
+    font-weight: 700;
+    color: var(--text-1);
+    letter-spacing: -0.02em;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
 }
 
-.card-meta {
-    font-size: 0.8rem;
-    color: #64748b;
+.zd-logo-accent { color: var(--cyan); }
+
+.zd-user-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
 }
 
-/* ── Badge de estado ── */
-.badge {
-    display: inline-block;
-    padding: 0.2rem 0.65rem;
+.zd-pill {
+    background: var(--bg-3);
+    border: 1px solid var(--border-2);
     border-radius: 20px;
-    font-size: 0.7rem;
+    padding: 0.22rem 0.7rem;
+    font-size: 0.73rem;
+    color: var(--text-2);
+    font-weight: 500;
+}
+
+.zd-pill-cyan {
+    background: var(--cyan-soft);
+    border-color: rgba(0,229,192,0.2);
+    color: var(--cyan);
+    font-weight: 600;
+}
+
+/* Steps */
+.zd-steps {
+    display: flex;
+    align-items: stretch;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-bottom: 2rem;
+}
+
+.zd-step {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    padding: 0.7rem 0.5rem;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--text-3);
+    white-space: nowrap;
+    transition: all 0.15s;
+    position: relative;
+}
+
+.zd-step + .zd-step::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 20%;
+    height: 60%;
+    width: 1px;
+    background: var(--border);
+}
+
+.zd-step-active {
+    background: var(--cyan-glow);
+    color: var(--cyan);
+}
+
+.zd-step-done { color: var(--green); }
+
+.zd-step-num {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.6rem; font-weight: 700;
+    background: var(--border-2);
+    color: var(--text-3);
+    flex-shrink: 0;
+}
+
+.zd-step-active .zd-step-num { background: var(--cyan); color: #080c10; }
+.zd-step-done   .zd-step-num { background: var(--green); color: #080c10; }
+
+/* Cards */
+.zd-card {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.1rem 1.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.zd-card-cyan {
+    border-color: rgba(0,229,192,0.18);
+    background: linear-gradient(135deg, var(--bg-2), rgba(0,229,192,0.03));
+}
+
+.zd-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--cyan);
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    margin-bottom: 0.3rem;
+}
+
+.zd-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-1);
+}
+
+.zd-sub {
+    font-size: 0.75rem;
+    color: var(--text-2);
+    margin-top: 0.15rem;
+}
+
+/* Alumno row */
+.zd-alumno {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.7rem 0.9rem;
+    margin-bottom: 0.3rem;
+    transition: border-color 0.15s;
+    gap: 0.5rem;
+}
+
+.zd-alumno:hover { border-color: var(--border-2); }
+
+.zd-alumno-nombre {
+    font-weight: 500;
+    color: var(--text-1);
+    font-size: 0.875rem;
+}
+
+.zd-alumno-meta {
+    font-size: 0.73rem;
+    color: var(--text-2);
+    margin-top: 0.2rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    align-items: center;
+}
+
+.zd-tag {
+    background: var(--bg-3);
+    border: 1px solid var(--border-2);
+    border-radius: 4px;
+    padding: 0.08rem 0.4rem;
+    font-size: 0.68rem;
+    color: var(--text-2);
+}
+
+.zd-tag-cyan {
+    background: var(--cyan-soft);
+    border-color: rgba(0,229,192,0.15);
+    color: var(--cyan);
+}
+
+/* Badges */
+.zd-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.18rem 0.55rem;
+    border-radius: 20px;
+    font-size: 0.65rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
 
-.badge-pendiente  { background: rgba(245,158,11,0.15); color: #f59e0b; }
-.badge-aprobada   { background: rgba(0,212,170,0.15);  color: #00d4aa; }
-.badge-rechazada  { background: rgba(239,68,68,0.15);  color: #ef4444; }
-.badge-procesando { background: rgba(99,102,241,0.15); color: #818cf8; }
-.badge-completada { background: rgba(34,197,94,0.15);  color: #22c55e; }
-.badge-error      { background: rgba(239,68,68,0.15);  color: #ef4444; }
-
-/* ── Tabla de alumnos ── */
-.alumno-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: #111827;
-    border: 1px solid #1e3a4a;
-    border-radius: 8px;
-    padding: 0.75rem 1rem;
-    margin-bottom: 0.4rem;
-    transition: border-color 0.2s;
-}
-
-.alumno-row:hover { border-color: #00d4aa33; }
-
-.alumno-nombre { font-weight: 500; color: #f1f5f9; font-size: 0.9rem; }
-.alumno-meta   { font-size: 0.75rem; color: #64748b; margin-top: 2px; }
-
-/* ── Header de la app ── */
-.app-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 1rem 0 1.5rem 0;
-    border-bottom: 1px solid #1e3a4a;
-    margin-bottom: 2rem;
-}
-
-.app-logo {
-    font-size: 1.3rem;
-    font-weight: 700;
-    color: #f1f5f9;
-    letter-spacing: -0.02em;
-}
-
-.app-logo span { color: #00d4aa; }
-
-.app-user {
-    font-size: 0.8rem;
-    color: #64748b;
-}
-
-.app-user strong { color: #00d4aa; }
-
-/* ── Step indicator ── */
-.steps {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 2rem;
-}
-
-.step {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    font-size: 0.8rem;
-    color: #64748b;
-    font-weight: 500;
-}
-
-.step.active { color: #00d4aa; }
-.step.done   { color: #22c55e; }
-
-.step-num {
-    width: 24px; height: 24px;
+.zd-badge::before {
+    content: '';
+    width: 4px; height: 4px;
     border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 0.7rem; font-weight: 700;
-    background: #1e3a4a; color: #64748b;
+    background: currentColor;
 }
 
-.step.active .step-num { background: #00d4aa; color: #0a0a0f; }
-.step.done   .step-num { background: #22c55e; color: #0a0a0f; }
+.zd-badge-pendiente  { background: rgba(255,184,48,0.1);  color: var(--amber); }
+.zd-badge-aprobada   { background: var(--cyan-soft);       color: var(--cyan);  }
+.zd-badge-rechazada  { background: rgba(255,77,106,0.1);  color: var(--red);   }
+.zd-badge-procesando { background: rgba(99,102,241,0.1);  color: #818cf8;      }
+.zd-badge-completada { background: rgba(0,209,122,0.1);   color: var(--green); }
+.zd-badge-error      { background: rgba(255,77,106,0.1);  color: var(--red);   }
 
-.step-line { flex: 1; height: 1px; background: #1e3a4a; min-width: 20px; }
+/* Section title */
+.zd-section {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin: 1.5rem 0 0.75rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
 
-/* ── Responsive ── */
-@media (max-width: 768px) {
-    .app-header { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
-    .steps { flex-wrap: wrap; }
+.zd-section::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+}
+
+.zd-count {
+    background: var(--cyan);
+    color: #080c10;
+    border-radius: 20px;
+    padding: 0.05rem 0.45rem;
+    font-size: 0.65rem;
+    font-weight: 700;
+}
+
+/* Empty state */
+.zd-empty {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--text-3);
+}
+
+.zd-empty-icon { font-size: 1.75rem; opacity: 0.35; margin-bottom: 0.6rem; }
+.zd-empty-text { font-size: 0.85rem; }
+
+/* Responsive móvil */
+@media (max-width: 640px) {
+    [data-testid="stMainBlockContainer"] { padding: 0.9rem 0.7rem !important; }
+    .zd-logo { font-size: 0.95rem; }
+    .zd-step { padding: 0.55rem 0.3rem; font-size: 0.7rem; }
+    .zd-step-label { display: none; }
 }
 </style>
 """, unsafe_allow_html=True)
 
-# ── Estado de sesión ──────────────────────────────────────────────────────────
+import pages.login as _login
+import pages.operador as _operador
+import pages.formulario as _formulario
 
 if "usuario" not in st.session_state:
-    st.session_state.usuario = None
+    st.session_state["usuario"] = None
 
-# ── Router ────────────────────────────────────────────────────────────────────
+_usuario = st.session_state.get("usuario")
 
-if st.session_state.usuario is None:
-    from pages.login import render
-    render()
-elif st.session_state.usuario["rol"] == "operador":
-    from pages.operador import render
-    render()
+if _usuario is None:
+    _login.render()
+elif _usuario.get("rol") == "operador":
+    _operador.render()
 else:
-    from pages.formulario import render
-    render()
+    _formulario.render()

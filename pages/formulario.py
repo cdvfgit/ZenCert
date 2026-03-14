@@ -2,7 +2,7 @@
 pages/formulario.py
 -------------------
 Vista del instructor para crear órdenes de certificados.
-Flujo: Datos de la orden → Agregar alumnos → Resumen → Enviar
+Flujo: Datos de la orden → Agregar alumnos → Revisar y enviar
 """
 
 import json
@@ -10,14 +10,13 @@ from datetime import date
 from pathlib import Path
 
 import streamlit as st
-
 from core.lector_sheets import crear_hoja_orden, crear_orden
 
 _RUTA_ORGANIZACIONES = Path(__file__).parent.parent / "data" / "organizaciones"
 _RUTA_TIPOS_GRADO    = Path(__file__).parent.parent / "data" / "tipos_grado.json"
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# ── Helpers de datos ──────────────────────────────────────────────────────────
 
 def _cargar_config_org(organizacion: str) -> dict:
     ruta = _RUTA_ORGANIZACIONES / f"{organizacion}.json"
@@ -28,77 +27,87 @@ def _cargar_tipos_grado() -> dict:
     return json.loads(_RUTA_TIPOS_GRADO.read_text(encoding="utf-8"))
 
 
+# ── Helpers de UI ─────────────────────────────────────────────────────────────
+
 def _header(usuario: dict):
+    org  = usuario["organizacion"].upper()
+    dojo = usuario["dojo"].replace("_", " ").title()
+    nombre = usuario["nombre"]
+
     st.markdown(f"""
-    <div class='app-header'>
-        <div class='app-logo'>🥋 Sistema de <span>Certificados</span></div>
-        <div class='app-user'>
-            {usuario['organizacion'].upper()} · {usuario['dojo'].replace('_', ' ').title()}
-            &nbsp;|&nbsp; <strong>{usuario['nombre']}</strong>
-            &nbsp;·&nbsp; <a href='#' style='color:#ef4444;font-size:0.75rem;'
-                onclick='window.location.reload()'>Salir</a>
+    <div class='zd-header'>
+        <div class='zd-logo'>🥋 Zen <span class='zd-logo-accent'>Dojo</span></div>
+        <div class='zd-user-row'>
+            <span class='zd-pill zd-pill-cyan'>{org}</span>
+            <span class='zd-pill'>{dojo}</span>
+            <span class='zd-pill'>{nombre}</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
 
-def _badge(estado: str) -> str:
-    return f"<span class='badge badge-{estado.lower()}'>{estado}</span>"
-
-
-def _step_indicator(paso_actual: int):
-    pasos = ["Datos de la orden", "Agregar alumnos", "Revisar y enviar"]
+def _step_indicator(paso: int):
+    pasos = [
+        (1, "Orden"),
+        (2, "Alumnos"),
+        (3, "Revisar"),
+    ]
     items = []
-    for i, nombre in enumerate(pasos, 1):
-        if i < paso_actual:
-            cls = "step done"
-            num = "✓"
-        elif i == paso_actual:
-            cls = "step active"
-            num = str(i)
+    for num, label in pasos:
+        if num < paso:
+            cls, sym = "zd-step zd-step-done", "✓"
+        elif num == paso:
+            cls, sym = "zd-step zd-step-active", str(num)
         else:
-            cls = "step"
-            num = str(i)
+            cls, sym = "zd-step", str(num)
 
         items.append(f"""
         <div class='{cls}'>
-            <div class='step-num'>{num}</div>
-            {nombre}
+            <div class='zd-step-num'>{sym}</div>
+            <span class='zd-step-label'>{label}</span>
         </div>
         """)
-        if i < len(pasos):
-            items.append("<div class='step-line'></div>")
 
     st.markdown(
-        f"<div class='steps'>{''.join(items)}</div>",
+        f"<div class='zd-steps'>{''.join(items)}</div>",
+        unsafe_allow_html=True,
+    )
+
+
+def _seccion(titulo: str, count: int = None):
+    count_html = f"<span class='zd-count'>{count}</span>" if count is not None else ""
+    st.markdown(
+        f"<div class='zd-section'>{titulo}{count_html}</div>",
         unsafe_allow_html=True,
     )
 
 
 # ── Paso 1 — Datos de la orden ────────────────────────────────────────────────
 
-def _paso_datos_orden(usuario: dict, config_org: dict) -> bool:
-    st.markdown("#### Datos de la orden")
-    st.markdown("<div style='height:0.25rem'></div>", unsafe_allow_html=True)
+def _paso_datos_orden(usuario: dict, config_org: dict):
+    org  = usuario["organizacion"].upper()
+    dojo = usuario["dojo"].replace("_", " ").title()
+
+    # Info del dojo
+    st.markdown(f"""
+    <div class='zd-card zd-card-cyan' style='margin-bottom:1.25rem;'>
+        <div class='zd-label'>Solicitando para</div>
+        <div class='zd-value'>{org}</div>
+        <div class='zd-sub'>{dojo}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    _seccion("Datos del examen")
 
     col1, col2 = st.columns(2)
-
     with col1:
-        st.markdown(f"""
-        <div class='card'>
-            <div class='card-header'>Organización</div>
-            <div class='card-title'>{usuario['organizacion'].upper()}</div>
-            <div class='card-meta'>{usuario['dojo'].replace('_', ' ').title()}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col2:
         ciudad = st.text_input(
-            "Ciudad del examen *",
+            "Ciudad *",
             value=st.session_state.get("orden_ciudad", ""),
             placeholder="Ej: Puerto Ordaz",
             key="input_ciudad",
         )
+    with col2:
         fecha = st.date_input(
             "Fecha del examen *",
             value=st.session_state.get("orden_fecha", date.today()),
@@ -106,19 +115,16 @@ def _paso_datos_orden(usuario: dict, config_org: dict) -> bool:
             format="DD/MM/YYYY",
         )
 
-    st.markdown("<div style='height:0.75rem'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
 
-    if st.button("Continuar →", type="primary"):
+    if st.button("Continuar — Agregar alumnos →", type="primary", use_container_width=True):
         if not ciudad.strip():
             st.error("La ciudad del examen es obligatoria.")
-            return False
-
+            return
         st.session_state.orden_ciudad = ciudad.strip()
         st.session_state.orden_fecha  = fecha
         st.session_state.paso         = 2
         st.rerun()
-
-    return False
 
 
 # ── Paso 2 — Agregar alumnos ──────────────────────────────────────────────────
@@ -127,7 +133,6 @@ def _paso_alumnos(usuario: dict, config_org: dict, tipos_grado: dict):
     organizacion = usuario["organizacion"]
     dojo         = usuario["dojo"]
 
-    # Tipos permitidos para este dojo
     tipos_permitidos = (
         config_org
         .get("dojos", {})
@@ -138,69 +143,69 @@ def _paso_alumnos(usuario: dict, config_org: dict, tipos_grado: dict):
     if "alumnos" not in st.session_state:
         st.session_state.alumnos = []
 
-    # ── Formulario agregar alumno ─────────────────────────────────────────
-    st.markdown("#### Agregar alumno")
+    # ── Formulario de alumno ──────────────────────────────────────────────
+    _seccion("Nuevo alumno")
 
-    with st.expander("➕  Nuevo alumno", expanded=len(st.session_state.alumnos) == 0):
-        col1, col2 = st.columns([2, 1])
+    with st.expander(
+        "➕  Completar datos del alumno",
+        expanded=len(st.session_state.alumnos) == 0,
+    ):
+        nombre = st.text_input(
+            "Nombre completo *",
+            key="a_nombre",
+            placeholder="Apellidos y nombres como en el documento",
+        )
 
+        col1, col2 = st.columns(2)
         with col1:
-            nombre = st.text_input("Nombre completo *", key="a_nombre",
-                                   placeholder="Apellido Nombre")
-
-        with col2:
             tipo = st.selectbox(
                 "Tipo de grado *",
                 options=tipos_permitidos,
                 format_func=lambda t: tipos_grado.get(t, {}).get("nombre", t.capitalize()),
                 key="a_tipo",
             )
-
-        col3, col4, col5 = st.columns([1, 1, 2])
-
-        with col3:
-            # Grados disponibles según tipo
-            grados_config = config_org.get("grados", {}).get(tipo, {})
-            opciones_grado = sorted([int(k) for k in grados_config.keys()])
+        with col2:
+            grados_config   = config_org.get("grados", {}).get(tipo, {})
+            opciones_grado  = sorted([int(k) for k in grados_config.keys()])
             grado = st.selectbox(
                 "Grado *",
                 options=opciones_grado,
                 format_func=lambda g: (
                     f"{g}° "
                     f"{tipos_grado.get(grados_config.get(str(g), {}).get('tipo_override', tipo), {}).get('nombre', tipo.capitalize())}"
-                    f" — {grados_config.get(str(g), {}).get('color', '')}"
+                    f"  ·  {grados_config.get(str(g), {}).get('color', '')}"
                 ),
                 key="a_grado",
             )
 
-        with col4:
+        col3, col4 = st.columns([1, 2])
+        with col3:
             prefijo = st.selectbox(
-                "Prefijo cédula",
+                "Documento",
                 options=["V", "E", "S/C"],
+                help="V = Venezolano · E = Extranjero · S/C = Sin cédula",
                 key="a_prefijo",
             )
-
-        with col5:
-            cedula_disabled = prefijo == "S/C"
+        with col4:
             cedula = st.text_input(
                 "Número de cédula",
-                placeholder="Sin espacios ni puntos" if not cedula_disabled else "Sin documento",
-                disabled=cedula_disabled,
+                placeholder="Solo números, sin puntos ni espacios" if prefijo != "S/C" else "No aplica",
+                disabled=(prefijo == "S/C"),
                 key="a_cedula",
             )
 
         notas = st.text_input(
-            "Notas (opcional)",
-            placeholder="Observaciones del examen...",
+            "Observaciones (opcional)",
+            placeholder="Ej: Examen con condición especial",
             key="a_notas",
         )
 
-        st.markdown("<div style='height:0.25rem'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height:0.3rem'></div>", unsafe_allow_html=True)
 
-        if st.button("Agregar alumno", type="primary"):
+        if st.button("Agregar alumno a la orden", type="primary", use_container_width=True):
             errores = []
             if not nombre.strip():
-                errores.append("El nombre es obligatorio.")
+                errores.append("El nombre completo es obligatorio.")
             if prefijo != "S/C" and cedula.strip() and not cedula.strip().isdigit():
                 errores.append("La cédula debe contener solo números.")
 
@@ -216,62 +221,58 @@ def _paso_alumnos(usuario: dict, config_org: dict, tipos_grado: dict):
                     "tipo":           tipo,
                     "notas":          notas.strip(),
                 })
-                st.success(f"✓ {nombre.strip()} agregado correctamente.")
+                st.success(f"✓  {nombre.strip()} agregado correctamente.")
                 st.rerun()
 
-    # ── Lista de alumnos agregados ────────────────────────────────────────
+    # ── Lista de alumnos ──────────────────────────────────────────────────
     if st.session_state.alumnos:
-        st.markdown(f"""
-        <div style='font-size:0.85rem; font-weight:600; color:#00d4aa;
-                    text-transform:uppercase; letter-spacing:0.06em;
-                    margin: 1.25rem 0 0.75rem 0;'>
-            Alumnos registrados ({len(st.session_state.alumnos)})
-        </div>
-        """, unsafe_allow_html=True)
+        _seccion("Alumnos registrados", len(st.session_state.alumnos))
 
         for i, alumno in enumerate(st.session_state.alumnos):
-            col_info, col_btn = st.columns([5, 1])
+            tipo_nombre = tipos_grado.get(alumno["tipo"], {}).get("nombre", alumno["tipo"])
+            cedula_txt  = (
+                f"C.I. {alumno['prefijo_cedula']}-{alumno['cedula']}"
+                if alumno["cedula"] else "Sin cédula"
+            )
 
+            col_info, col_btn = st.columns([6, 1])
             with col_info:
-                tipo_nombre = tipos_grado.get(alumno["tipo"], {}).get("nombre", alumno["tipo"])
-                cedula_txt  = (
-                    f"C.I. {alumno['prefijo_cedula']}-{alumno['cedula']}"
-                    if alumno["cedula"] else "Sin cédula"
-                )
                 st.markdown(f"""
-                <div class='alumno-row'>
+                <div class='zd-alumno'>
                     <div>
-                        <div class='alumno-nombre'>{alumno['nombre_alumno']}</div>
-                        <div class='alumno-meta'>
-                            {cedula_txt} &nbsp;·&nbsp;
-                            {alumno['grado']}° {tipo_nombre}
-                            {f"&nbsp;·&nbsp; {alumno['notas']}" if alumno['notas'] else ""}
+                        <div class='zd-alumno-nombre'>{alumno['nombre_alumno']}</div>
+                        <div class='zd-alumno-meta'>
+                            <span class='zd-tag'>{cedula_txt}</span>
+                            <span class='zd-tag zd-tag-cyan'>{alumno['grado']}° {tipo_nombre}</span>
+                            {f"<span class='zd-tag'>{alumno['notas']}</span>" if alumno['notas'] else ""}
                         </div>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
 
             with col_btn:
-                if st.button("✕", key=f"del_{i}", help="Eliminar alumno"):
+                st.markdown("<div style='height:0.4rem'></div>", unsafe_allow_html=True)
+                if st.button("✕", key=f"del_{i}", help="Eliminar", use_container_width=True):
                     st.session_state.alumnos.pop(i)
                     st.rerun()
 
-        st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
-
-        col_back, col_next = st.columns([1, 4])
+        st.markdown("<div style='height:1.25rem'></div>", unsafe_allow_html=True)
+        col_back, col_next = st.columns([1, 2])
         with col_back:
-            if st.button("← Atrás", type="secondary"):
+            if st.button("← Atrás", type="secondary", use_container_width=True):
                 st.session_state.paso = 1
                 st.rerun()
         with col_next:
-            if st.button("Revisar orden →", type="primary"):
-                if len(st.session_state.alumnos) == 0:
-                    st.error("Agrega al menos un alumno.")
-                else:
-                    st.session_state.paso = 3
-                    st.rerun()
+            if st.button("Revisar orden →", type="primary", use_container_width=True):
+                st.session_state.paso = 3
+                st.rerun()
     else:
-        st.info("Agrega al menos un alumno para continuar.")
+        st.markdown("""
+        <div class='zd-empty'>
+            <div class='zd-empty-icon'>👤</div>
+            <div class='zd-empty-text'>Aún no has agregado alumnos a esta orden.</div>
+        </div>
+        """, unsafe_allow_html=True)
         if st.button("← Atrás", type="secondary"):
             st.session_state.paso = 1
             st.rerun()
@@ -280,25 +281,17 @@ def _paso_alumnos(usuario: dict, config_org: dict, tipos_grado: dict):
 # ── Paso 3 — Resumen y envío ──────────────────────────────────────────────────
 
 def _paso_resumen(usuario: dict, tipos_grado: dict):
-    st.markdown("#### Resumen de la orden")
+    # Datos generales de la orden
+    _seccion("Datos de la orden")
 
-    # Datos generales
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Organización", usuario["organizacion"].upper())
-    col2.metric("Dojo", usuario["dojo"].replace("_", " ").title())
-    col3.metric("Ciudad", st.session_state.orden_ciudad)
-    col4.metric("Fecha", st.session_state.orden_fecha.strftime("%d/%m/%Y"))
+    col2.metric("Dojo",         usuario["dojo"].replace("_", " ").title())
+    col3.metric("Ciudad",       st.session_state.orden_ciudad)
+    col4.metric("Fecha",        st.session_state.orden_fecha.strftime("%d/%m/%Y"))
 
-    st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
-
-    # Tabla de alumnos
-    st.markdown(f"""
-    <div style='font-size:0.85rem; font-weight:600; color:#00d4aa;
-                text-transform:uppercase; letter-spacing:0.06em;
-                margin-bottom:0.75rem;'>
-        Alumnos ({len(st.session_state.alumnos)})
-    </div>
-    """, unsafe_allow_html=True)
+    # Lista de alumnos
+    _seccion("Alumnos", len(st.session_state.alumnos))
 
     for alumno in st.session_state.alumnos:
         tipo_nombre = tipos_grado.get(alumno["tipo"], {}).get("nombre", alumno["tipo"])
@@ -307,39 +300,34 @@ def _paso_resumen(usuario: dict, tipos_grado: dict):
             if alumno["cedula"] else "Sin cédula"
         )
         st.markdown(f"""
-        <div class='alumno-row'>
+        <div class='zd-alumno'>
             <div>
-                <div class='alumno-nombre'>{alumno['nombre_alumno']}</div>
-                <div class='alumno-meta'>
-                    {cedula_txt} &nbsp;·&nbsp; {alumno['grado']}° {tipo_nombre}
-                    {f"&nbsp;·&nbsp; {alumno['notas']}" if alumno['notas'] else ""}
+                <div class='zd-alumno-nombre'>{alumno['nombre_alumno']}</div>
+                <div class='zd-alumno-meta'>
+                    <span class='zd-tag'>{cedula_txt}</span>
+                    <span class='zd-tag zd-tag-cyan'>{alumno['grado']}° {tipo_nombre}</span>
+                    {f"<span class='zd-tag'>{alumno['notas']}</span>" if alumno['notas'] else ""}
                 </div>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
-    st.markdown("<div style='height:1.25rem'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
+    st.warning("⚠ Revisa los datos cuidadosamente. Una vez enviada, la orden no puede modificarse.")
+    st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
 
-    # Advertencia antes de enviar
-    st.warning(
-        "⚠ Revisa los datos antes de enviar. "
-        "Una vez enviada, la orden no puede modificarse."
-    )
-
-    col_back, _, col_send = st.columns([1, 3, 2])
-
+    col_back, col_send = st.columns([1, 2])
     with col_back:
-        if st.button("← Editar", type="secondary"):
+        if st.button("← Editar", type="secondary", use_container_width=True):
             st.session_state.paso = 2
             st.rerun()
-
     with col_send:
-        if st.button("✓ Confirmar y enviar", type="primary", use_container_width=True):
+        if st.button("✓ Confirmar y enviar orden", type="primary", use_container_width=True):
             _enviar_orden(usuario)
 
 
 def _enviar_orden(usuario: dict):
-    with st.spinner("Enviando orden..."):
+    with st.spinner("Registrando orden..."):
         try:
             datos_orden = {
                 "instructor":    usuario["nombre"],
@@ -349,37 +337,35 @@ def _enviar_orden(usuario: dict):
                 "fecha":         st.session_state.orden_fecha.strftime("%Y-%m-%d"),
                 "total_alumnos": str(len(st.session_state.alumnos)),
             }
-
             id_orden = crear_orden(datos_orden)
             crear_hoja_orden(id_orden, st.session_state.alumnos)
 
             # Limpiar estado
-            st.session_state.paso    = 1
-            st.session_state.alumnos = []
-            st.session_state.pop("orden_ciudad", None)
-            st.session_state.pop("orden_fecha",  None)
+            for key in ["paso", "alumnos", "orden_ciudad", "orden_fecha"]:
+                st.session_state.pop(key, None)
 
             st.success(f"""
-            ✅ **Orden enviada exitosamente**
+            ✅ **Orden registrada exitosamente**
 
-            Tu orden ha sido registrada con el ID **{id_orden}**.
-            El operador revisará y aprobará tu solicitud en breve.
+            ID de tu solicitud: **{id_orden}**
+
+            El operador revisará y procesará tu orden en breve.
+            Puedes enviar una nueva orden cuando lo necesites.
             """)
 
         except Exception as e:
-            st.error(f"Error al enviar la orden: {e}")
+            st.error(f"No se pudo registrar la orden: {e}")
 
 
 # ── Render principal ──────────────────────────────────────────────────────────
 
 def render():
-    usuario      = st.session_state.usuario
-    config_org   = _cargar_config_org(usuario["organizacion"])
-    tipos_grado  = _cargar_tipos_grado()
+    usuario     = st.session_state.usuario
+    config_org  = _cargar_config_org(usuario["organizacion"])
+    tipos_grado = _cargar_tipos_grado()
 
     _header(usuario)
 
-    # Inicializar paso
     if "paso" not in st.session_state:
         st.session_state.paso = 1
 
@@ -396,7 +382,7 @@ def render():
     st.markdown("<div style='height:3rem'></div>", unsafe_allow_html=True)
     col_logout = st.columns([5, 1])[1]
     with col_logout:
-        if st.button("Cerrar sesión", type="secondary", use_container_width=True):
+        if st.button("Salir", type="secondary", use_container_width=True):
             for key in list(st.session_state.keys()):
                 del st.session_state[key]
             st.rerun()
