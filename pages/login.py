@@ -56,6 +56,22 @@ def render():
             if not usuario_input.strip() or not password_input:
                 st.error("Ingresa tu usuario y contraseña.")
             else:
+                try:
+                    resultado = autenticar(usuario_input.strip(), password_input)
+                    if resultado:
+                        st.session_state["usuario"] = resultado
+                        st.rerun()
+                    else:
+                        st.error("Usuario o contraseña incorrectos.")
+                except Exception as e:
+                    st.error(f"Error de autenticación: {e}")
+                    import traceback
+                    st.code(traceback.format_exc())
+        
+        if st.button("Ingresar →", type="primary", use_container_width=True, key="li_btn"):
+            if not usuario_input.strip() or not password_input:
+                st.error("Ingresa tu usuario y contraseña.")
+            else:
                 resultado = autenticar(usuario_input.strip(), password_input)
                 if resultado:
                     st.session_state["usuario"] = resultado
