@@ -2,7 +2,9 @@
 auth.py
 -------
 Lógica de autenticación del sistema.
-Lee usuarios desde data/usuarios.json y verifica credenciales.
+
+Entorno local:   lee usuarios desde data/usuarios.json
+Streamlit Cloud: lee usuarios desde st.secrets["usuarios"]["data"]
 """
 
 import hashlib
@@ -16,7 +18,20 @@ def _hash(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
 
+def _en_streamlit_cloud() -> bool:
+    try:
+        import streamlit as st
+        return "usuarios" in st.secrets
+    except Exception:
+        return False
+
+
 def _cargar_usuarios() -> list[dict]:
+    if _en_streamlit_cloud():
+        import streamlit as st
+        data = json.loads(st.secrets["usuarios"]["data"])
+        return data["usuarios"]
+
     if not _RUTA_USUARIOS.exists():
         raise FileNotFoundError(
             f"No se encontró data/usuarios.json en: {_RUTA_USUARIOS}"
@@ -25,19 +40,9 @@ def _cargar_usuarios() -> list[dict]:
 
 
 def autenticar(usuario: str, password: str) -> dict | None:
-    """
-    Verifica credenciales y retorna el dict del usuario si son correctas.
-
-    Args:
-        usuario: Nombre de usuario.
-        password: Contraseña en texto plano.
-
-    Returns:
-        Dict del usuario si las credenciales son correctas, None si no.
-    """
     try:
         usuarios = _cargar_usuarios()
-    except FileNotFoundError:
+    except Exception:
         return None
 
     hash_ingresado = _hash(password)
