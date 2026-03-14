@@ -4,13 +4,16 @@ lector_sheets.py
 Toda la comunicación con Google Sheets.
 Los demás módulos ignoran completamente la existencia de Google Sheets.
 
-Requiere en .env:
-    GOOGLE_SHEET_ID = ID del spreadsheet de Google Sheets
+Entorno local:
+    GOOGLE_SHEET_ID en .env
+    credenciales.json en la raíz del proyecto
 
-Requiere en la raíz del proyecto:
-    credenciales.json — cuenta de servicio de Google Cloud con acceso a Sheets API
+Streamlit Cloud:
+    GOOGLE_SHEET_ID en st.secrets
+    gcp_service_account en st.secrets
 """
 
+import json
 import logging
 import os
 from datetime import datetime
@@ -32,7 +35,6 @@ _SCOPES = [
 ]
 
 _RUTA_CREDENCIALES = Path(__file__).parent.parent / "credenciales.json"
-_SHEET_ID = os.getenv("GOOGLE_SHEET_ID")
 
 _HOJA_ORDENES = "ORDENES"
 
@@ -71,29 +73,66 @@ class Estado:
     ERROR       = "ERROR"
 
 
-# ── Helpers privados ──────────────────────────────────────────────────────────
+# ── Detección de entorno ──────────────────────────────────────────────────────
 
-def _validar_configuracion() -> None:
+def _en_streamlit_cloud() -> bool:
+    """Detecta si el sistema corre en Streamlit Cloud verificando st.secrets."""
+    try:
+        import streamlit as st
+        return "GOOGLE_SHEET_ID" in st.secrets
+    except Exception:
+        return False
+
+
+def _obtener_credenciales() -> Credentials:
     """
-    Verifica que las variables de entorno y credenciales estén disponibles
-    antes de intentar cualquier conexión.
+    Retorna credenciales de Google según el entorno.
+
+    Streamlit Cloud: lee desde st.secrets["gcp_service_account"]
+    Local:           lee desde credenciales.json
 
     Raises:
-        FileNotFoundError: Si credenciales.json no existe.
-        EnvironmentError: Si GOOGLE_SHEET_ID no está definido en .env.
+        FileNotFoundError: Si credenciales.json no existe en local.
     """
+    if _en_streamlit_cloud():
+        import streamlit as st
+        info = dict(st.secrets["gcp_service_account"])
+        return Credentials.from_service_account_info(info, scopes=_SCOPES)
+
     if not _RUTA_CREDENCIALES.exists():
         raise FileNotFoundError(
             f"No se encontró el archivo de credenciales en: {_RUTA_CREDENCIALES}\n"
             "Asegúrate de colocar credenciales.json en la raíz del proyecto."
         )
+    return Credentials.from_service_account_file(
+        str(_RUTA_CREDENCIALES), scopes=_SCOPES
+    )
 
-    if not _SHEET_ID:
+
+def _obtener_sheet_id() -> str:
+    """
+    Retorna el GOOGLE_SHEET_ID según el entorno.
+
+    Streamlit Cloud: lee desde st.secrets
+    Local:           lee desde .env
+
+    Raises:
+        EnvironmentError: Si GOOGLE_SHEET_ID no está disponible.
+    """
+    if _en_streamlit_cloud():
+        import streamlit as st
+        return st.secrets["GOOGLE_SHEET_ID"]
+
+    sheet_id = os.getenv("GOOGLE_SHEET_ID")
+    if not sheet_id:
         raise EnvironmentError(
             "La variable de entorno GOOGLE_SHEET_ID no está definida.\n"
             "Agrégala en tu archivo .env: GOOGLE_SHEET_ID=tu_id_aqui"
         )
+    return sheet_id
 
+
+# ── Helpers privados ──────────────────────────────────────────────────────────
 
 def _fila_a_orden(fila: list) -> dict:
     """
@@ -153,26 +192,24 @@ def _fila_a_alumno(fila: list) -> dict:
 def conectar() -> gspread.Spreadsheet:
     """
     Establece conexión autenticada con Google Sheets via cuenta de servicio.
+    Compatible con entorno local y Streamlit Cloud.
 
     Returns:
         Objeto Spreadsheet listo para operar.
 
     Raises:
-        FileNotFoundError: Si credenciales.json no existe.
-        EnvironmentError: Si GOOGLE_SHEET_ID no está en .env.
+        FileNotFoundError: Si credenciales.json no existe en local.
+        EnvironmentError: Si GOOGLE_SHEET_ID no está disponible.
         gspread.exceptions.GSpreadException: Si la autenticación falla
             o el Sheet no es accesible con las credenciales provistas.
     """
-    _validar_configuracion()
+    credenciales = _obtener_credenciales()
+    sheet_id     = _obtener_sheet_id()
 
-    credenciales = Credentials.from_service_account_file(
-        str(_RUTA_CREDENCIALES),
-        scopes=_SCOPES,
-    )
-    cliente = gspread.authorize(credenciales)
-    spreadsheet = cliente.open_by_key(_SHEET_ID)
+    cliente      = gspread.authorize(credenciales)
+    spreadsheet  = cliente.open_by_key(sheet_id)
 
-    logger.info("conectar | conexión establecida | sheet_id=%s", _SHEET_ID)
+    logger.info("conectar | conexión establecida | sheet_id=%s", sheet_id)
     return spreadsheet
 
 
@@ -275,8 +312,7 @@ def actualizar_estado(id_orden: str, estado: str) -> None:
     spreadsheet = conectar()
     hoja = spreadsheet.worksheet(_HOJA_ORDENES)
 
-    # Busca el id_orden en la columna A (índice 1 en gspread, base 1)
-    col_id = _COL["id_orden"] + 1
+    col_id     = _COL["id_orden"] + 1
     col_estado = _COL["estado"] + 1
 
     celda = hoja.find(id_orden, in_column=col_id)
@@ -298,9 +334,6 @@ def actualizar_estado(id_orden: str, estado: str) -> None:
 def crear_orden(datos_orden: dict) -> str:
     """
     Inserta una nueva orden en la hoja ORDENES con estado PENDIENTE.
-
-    Genera un id_orden secuencial basado en el año actual y el número
-    de filas existentes en la hoja.
 
     Args:
         datos_orden: Diccionario con los campos de la orden:
@@ -330,12 +363,10 @@ def crear_orden(datos_orden: dict) -> str:
     spreadsheet = conectar()
     hoja = spreadsheet.worksheet(_HOJA_ORDENES)
 
-    # Genera id_orden secuencial
-    filas_existentes = len(hoja.get_all_values())  # incluye encabezado
-    numero = filas_existentes  # fila 1 = encabezado, fila 2 = orden 001
-    anio = datetime.now().year
+    filas_existentes = len(hoja.get_all_values())
+    numero   = filas_existentes
+    anio     = datetime.now().year
     id_orden = f"ORD-{anio}-{numero:03d}"
-
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
 
     nueva_fila = [""] * len(_COL)
@@ -368,18 +399,9 @@ def crear_hoja_orden(id_orden: str, alumnos: list[dict]) -> None:
     Crea una hoja nueva en el spreadsheet nombrada con el id_orden
     y la llena con los datos de los alumnos del lote.
 
-    Debe llamarse inmediatamente después de crear_orden(). Si falla,
-    la fila en ORDENES debe eliminarse para mantener consistencia.
-
     Args:
         id_orden: Identificador único de la orden (ej. 'ORD-2025-001').
-        alumnos: Lista de diccionarios con los campos de cada alumno:
-            - nombre_alumno (str)
-            - cedula (str)
-            - prefijo_cedula (str)
-            - grado (str)
-            - tipo (str)
-            - notas (str) — puede ser vacío
+        alumnos: Lista de diccionarios con los campos de cada alumno.
 
     Raises:
         FileNotFoundError: Si credenciales.json no existe.
