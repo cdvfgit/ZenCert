@@ -67,7 +67,7 @@ def render():
                     st.error(f"Error de autenticación: {e}")
                     import traceback
                     st.code(traceback.format_exc())
-        
+        """     
         if st.button("Ingresar →", type="primary", use_container_width=True, key="li_btn"):
             if not usuario_input.strip() or not password_input:
                 st.error("Ingresa tu usuario y contraseña.")
@@ -78,7 +78,7 @@ def render():
                     st.rerun()
                 else:
                     st.error("Usuario o contraseña incorrectos.")
-
+        """
         st.markdown("""
         <div style='text-align:center; font-size:0.72rem; color:#1a2535;
                     margin-top:1rem; padding-bottom:0.5rem;'>
