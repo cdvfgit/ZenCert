@@ -47,11 +47,7 @@ def _header(usuario: dict):
 
 
 def _step_indicator(paso: int):
-    pasos = [
-        (1, "Orden"),
-        (2, "Alumnos"),
-        (3, "Revisar"),
-    ]
+    pasos = [(1, "Orden"), (2, "Alumnos"), (3, "Revisar")]
     items = []
     for num, label in pasos:
         if num < paso:
@@ -60,18 +56,9 @@ def _step_indicator(paso: int):
             cls, sym = "zd-step zd-step-active", str(num)
         else:
             cls, sym = "zd-step", str(num)
+        items.append(f"<div class='{cls}'><div class='zd-step-num'>{sym}</div><span class='zd-step-label'>{label}</span></div>")
 
-        items.append(f"""
-        <div class='{cls}'>
-            <div class='zd-step-num'>{sym}</div>
-            <span class='zd-step-label'>{label}</span>
-        </div>
-        """)
-
-    st.markdown(
-        f"<div class='zd-steps'>{''.join(items)}</div>",
-        unsafe_allow_html=True,
-    )
+    st.markdown(f"<div class='zd-steps'>{''.join(items)}</div>", unsafe_allow_html=True)
 
 
 def _seccion(titulo: str, count: int = None):
@@ -80,6 +67,49 @@ def _seccion(titulo: str, count: int = None):
         f"<div class='zd-section'>{titulo}{count_html}</div>",
         unsafe_allow_html=True,
     )
+
+
+# ── Tabla de alumnos ─────────────────────────────────────────────────────────
+
+def _tabla_alumnos(alumnos: list, tipos_grado: dict, editable: bool = False):
+    """Renderiza una tabla limpia con los datos de los alumnos."""
+    # Encabezados
+    if editable:
+        cols = st.columns([3, 2, 2, 1])
+        headers = ["Nombre", "Cédula", "Grado", ""]
+    else:
+        cols = st.columns([3, 2, 2])
+        headers = ["Nombre", "Cédula", "Grado"]
+
+    for col, h in zip(cols, headers):
+        col.markdown(f"<div style='font-size:0.7rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;padding:0.3rem 0;border-bottom:1px solid var(--border);'>{h}</div>", unsafe_allow_html=True)
+
+    st.markdown("<div style='height:0.2rem'></div>", unsafe_allow_html=True)
+
+    for i, alumno in enumerate(alumnos):
+        tipo_nombre = tipos_grado.get(alumno["tipo"], {}).get("nombre", alumno["tipo"])
+        cedula_txt  = f"C.I. {alumno['prefijo_cedula']}-{alumno['cedula']}" if alumno.get("cedula") else "Sin cédula"
+        grado_txt   = f"{alumno['grado']}° {tipo_nombre}"
+
+        bg = "var(--bg-2)" if i % 2 == 0 else "var(--bg)"
+
+        if editable:
+            c1, c2, c3, c4 = st.columns([3, 2, 2, 1])
+        else:
+            c1, c2, c3 = st.columns([3, 2, 2])
+
+        row_style = f"background:{bg};padding:0.5rem 0.4rem;border-radius:6px;font-size:0.85rem;"
+
+        c1.markdown(f"<div style='{row_style}color:var(--text-1);font-weight:500;'>{alumno['nombre_alumno']}</div>", unsafe_allow_html=True)
+        c2.markdown(f"<div style='{row_style}color:var(--text-2);'>{cedula_txt}</div>", unsafe_allow_html=True)
+        c3.markdown(f"<div style='{row_style}'><span style='background:var(--cyan-soft);border:1px solid rgba(0,229,192,0.15);border-radius:4px;padding:0.1rem 0.4rem;font-size:0.75rem;color:var(--cyan);'>{grado_txt}</span></div>", unsafe_allow_html=True)
+
+        if editable:
+            with c4:
+                st.markdown("<div style='height:0.2rem'></div>", unsafe_allow_html=True)
+                if st.button("✕", key=f"del_{i}", help="Eliminar alumno", use_container_width=True):
+                    st.session_state.alumnos.pop(i)
+                    st.rerun()
 
 
 # ── Paso 1 — Datos de la orden ────────────────────────────────────────────────
@@ -221,42 +251,18 @@ def _paso_alumnos(usuario: dict, config_org: dict, tipos_grado: dict):
                     "tipo":           tipo,
                     "notas":          notas.strip(),
                 })
+                # Reset inputs
+                for k in ["a_nombre", "a_cedula", "a_notas"]:
+                    st.session_state.pop(k, None)
                 st.success(f"✓  {nombre.strip()} agregado correctamente.")
                 st.rerun()
 
-    # ── Lista de alumnos ──────────────────────────────────────────────────
+    # ── Tabla de alumnos ──────────────────────────────────────────────────
     if st.session_state.alumnos:
         _seccion("Alumnos registrados", len(st.session_state.alumnos))
+        _tabla_alumnos(st.session_state.alumnos, tipos_grado, editable=True)
 
-        for i, alumno in enumerate(st.session_state.alumnos):
-            tipo_nombre = tipos_grado.get(alumno["tipo"], {}).get("nombre", alumno["tipo"])
-            cedula_txt  = (
-                f"C.I. {alumno['prefijo_cedula']}-{alumno['cedula']}"
-                if alumno["cedula"] else "Sin cédula"
-            )
-
-            col_info, col_btn = st.columns([6, 1])
-            with col_info:
-                st.markdown(f"""
-                <div class='zd-alumno'>
-                    <div>
-                        <div class='zd-alumno-nombre'>{alumno['nombre_alumno']}</div>
-                        <div class='zd-alumno-meta'>
-                            <span class='zd-tag'>{cedula_txt}</span>
-                            <span class='zd-tag zd-tag-cyan'>{alumno['grado']}° {tipo_nombre}</span>
-                            {f"<span class='zd-tag'>{alumno['notas']}</span>" if alumno['notas'] else ""}
-                        </div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-
-            with col_btn:
-                st.markdown("<div style='height:0.4rem'></div>", unsafe_allow_html=True)
-                if st.button("✕", key=f"del_{i}", help="Eliminar", use_container_width=True):
-                    st.session_state.alumnos.pop(i)
-                    st.rerun()
-
-        st.markdown("<div style='height:1.25rem'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
         col_back, col_next = st.columns([1, 2])
         with col_back:
             if st.button("← Atrás", type="secondary", use_container_width=True):
@@ -267,12 +273,7 @@ def _paso_alumnos(usuario: dict, config_org: dict, tipos_grado: dict):
                 st.session_state.paso = 3
                 st.rerun()
     else:
-        st.markdown("""
-        <div class='zd-empty'>
-            <div class='zd-empty-icon'>👤</div>
-            <div class='zd-empty-text'>Aún no has agregado alumnos a esta orden.</div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown("<div class='zd-empty'><div class='zd-empty-icon'>👤</div><div class='zd-empty-text'>Aún no has agregado alumnos a esta orden.</div></div>", unsafe_allow_html=True)
         if st.button("← Atrás", type="secondary"):
             st.session_state.paso = 1
             st.rerun()
@@ -293,24 +294,7 @@ def _paso_resumen(usuario: dict, tipos_grado: dict):
     # Lista de alumnos
     _seccion("Alumnos", len(st.session_state.alumnos))
 
-    for alumno in st.session_state.alumnos:
-        tipo_nombre = tipos_grado.get(alumno["tipo"], {}).get("nombre", alumno["tipo"])
-        cedula_txt  = (
-            f"C.I. {alumno['prefijo_cedula']}-{alumno['cedula']}"
-            if alumno["cedula"] else "Sin cédula"
-        )
-        st.markdown(f"""
-        <div class='zd-alumno'>
-            <div>
-                <div class='zd-alumno-nombre'>{alumno['nombre_alumno']}</div>
-                <div class='zd-alumno-meta'>
-                    <span class='zd-tag'>{cedula_txt}</span>
-                    <span class='zd-tag zd-tag-cyan'>{alumno['grado']}° {tipo_nombre}</span>
-                    {f"<span class='zd-tag'>{alumno['notas']}</span>" if alumno['notas'] else ""}
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+    _tabla_alumnos(st.session_state.alumnos, tipos_grado, editable=False)
 
     st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
     st.warning("⚠ Revisa los datos cuidadosamente. Una vez enviada, la orden no puede modificarse.")

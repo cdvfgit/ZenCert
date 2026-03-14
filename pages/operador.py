@@ -34,6 +34,27 @@ def _seccion(titulo: str, count: int = None):
     )
 
 
+def _tabla_alumnos_op(alumnos: list):
+    """Tabla de solo lectura para el operador."""
+    c1, c2, c3 = st.columns([3, 2, 2])
+    for col, h in zip([c1,c2,c3], ["Nombre","Cédula","Grado"]):
+        col.markdown(f"<div style='font-size:0.7rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;padding:0.3rem 0;border-bottom:1px solid var(--border);'>{h}</div>", unsafe_allow_html=True)
+
+    st.markdown("<div style='height:0.2rem'></div>", unsafe_allow_html=True)
+
+    for i, alumno in enumerate(alumnos):
+        cedula_txt = f"C.I. {alumno.get('prefijo_cedula','')}-{alumno['cedula']}" if alumno.get("cedula") else "Sin cédula"
+        tipo  = alumno.get("tipo","").upper()
+        grado = alumno.get("grado","?")
+        bg    = "var(--bg-2)" if i % 2 == 0 else "var(--bg)"
+        row   = f"background:{bg};padding:0.5rem 0.4rem;border-radius:6px;font-size:0.85rem;"
+
+        c1, c2, c3 = st.columns([3, 2, 2])
+        c1.markdown(f"<div style='{row}color:var(--text-1);font-weight:500;'>{alumno.get('nombre_alumno','—')}</div>", unsafe_allow_html=True)
+        c2.markdown(f"<div style='{row}color:var(--text-2);'>{cedula_txt}</div>", unsafe_allow_html=True)
+        c3.markdown(f"<div style='{row}'><span style='background:var(--cyan-soft);border:1px solid rgba(0,229,192,0.15);border-radius:4px;padding:0.1rem 0.4rem;font-size:0.75rem;color:var(--cyan);'>{grado}° {tipo}</span></div>", unsafe_allow_html=True)
+
+
 def _card_orden(orden: dict, alumnos: list[dict], index):
     org   = orden.get("organizacion", "").upper()
     dojo  = orden.get("dojo", "").replace("_", " ").title()
@@ -55,25 +76,7 @@ def _card_orden(orden: dict, alumnos: list[dict], index):
         # Alumnos
         if alumnos:
             _seccion("Alumnos", len(alumnos))
-            for alumno in alumnos:
-                cedula_txt = (
-                    f"C.I. {alumno.get('prefijo_cedula','')}-{alumno['cedula']}"
-                    if alumno.get("cedula") else "Sin cédula"
-                )
-                tipo = alumno.get("tipo", "").upper()
-                grado = alumno.get("grado", "?")
-                st.markdown(f"""
-                <div class='zd-alumno'>
-                    <div>
-                        <div class='zd-alumno-nombre'>{alumno.get('nombre_alumno','—')}</div>
-                        <div class='zd-alumno-meta'>
-                            <span class='zd-tag'>{cedula_txt}</span>
-                            <span class='zd-tag zd-tag-cyan'>{grado}° {tipo}</span>
-                            {f"<span class='zd-tag'>{alumno['notas']}</span>" if alumno.get('notas') else ""}
-                        </div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+            _tabla_alumnos_op(alumnos)
         else:
             st.info("No se pudieron cargar los alumnos de esta orden.")
 
